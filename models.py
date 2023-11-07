@@ -159,6 +159,28 @@ class DigitClassificationModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        # Propojení vstupní vrstvy (28*28 pixelů) s první skrytou vrstvou
+        self.w1 = nn.Parameter(784, 256)
+        self.b1 = nn.Parameter(1, 256)
+        
+        # Propojení první skryté vrstvy s druhou skrytou vrstvou
+        self.w2 = nn.Parameter(256, 128)
+        self.b2 = nn.Parameter(1, 128)
+        
+        # Propojení druhé skryté vrstvy s výstupní vrstvou
+        self.w3 = nn.Parameter(128, 64)
+        self.b3 = nn.Parameter(1, 64)
+        
+        # Propojení třetí skryté vrstvy s výstupní vrstvou (10 tříd)
+        self.w4 = nn.Parameter(64, 10)
+        self.b4 = nn.Parameter(1, 10)
+        
+        # Seskupení všech vah a biasů do jedné proměnné
+        self.hyperparameters = [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3, self.w4, self.b4]
+        
+        # Zbylé hyperparametry - velikost dávky a rychlost učení
+        self.batch_size = 40
+        self.learning_rate = 0.1
 
     def run(self, x):
         """
@@ -175,6 +197,20 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        # Výpočet výstupní aktivační hodnoty pro první skrytou vrstvu pomocí aktivační funkce ReLU
+        output1 = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
+        
+        # Výpočet výstupní aktivační hodnoty pro druhou skrytou vrstvu pomocí aktivační funkce ReLU
+        output2 = nn.ReLU(nn.AddBias(nn.Linear(output1, self.w2), self.b2))
+        
+        # Výpočet výstupní aktivační hodnoty pro třetí skrytou vrstvu pomocí aktivační funkce ReLU
+        output3 = nn.ReLU(nn.AddBias(nn.Linear(output2, self.w3), self.b3))
+        
+        # Výpočet výstupní aktivační hodnoty pro výstupní vrstvu, zde bez ReLU (dle zadání)
+        output4 = nn.AddBias(nn.Linear(output3, self.w4), self.b4)
+        
+        # Výsledná predikce modelu
+        return output4
 
     def get_loss(self, x, y):
         """
@@ -190,12 +226,27 @@ class DigitClassificationModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        # Výpočet ztrátové funkce pro vícetřídní klasifikaci
+        return nn.SoftmaxLoss(self.run(x), y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
-        "*** YOUR CODE HERE ***"
+        "*** YOUR CODE HERE ***"     
+        validation_accuracy = 0     
+        # Trénování modelu - dokud není přesnost modelu na validačních datech větší než 0.98, tak se bude model neustále trénovat
+        while validation_accuracy <= 0.98:
+            # Iterace přes dávku dat z datasetu
+            for x, y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(x, y)
+                # Výpočet gradientů pro jednotlivé hyperparametry
+                gradients = nn.gradients(loss, self.hyperparameters)
+                # Backpropagation - zpětná aktualizace vah a biasů pro celou síť
+                for i in range(len(gradients)):
+                    self.hyperparameters[i].update(gradients[i], -self.learning_rate)
+            # Výpočet přesnosti modelu na validačních datech
+            validation_accuracy = dataset.get_validation_accuracy()
 
 class LanguageIDModel(object):
     """
