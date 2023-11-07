@@ -389,5 +389,5 @@ def as_scalar(node):
     assert node.data.size == 1, (
         "Node has shape {}, cannot convert to a scalar".format(
             format_shape(node.data.shape)))
-    # Místo np.asscaler jsem použil np.ndarray.item() z důvodu, že np.asscalar už není ve vyšších verzích numpy podporovaný
-    return np.ndarray.item(node.data)
+    # Místo np.asscaler jsem byl nucen použít array.item() z důvodu, že np.asscalar už není ve vyšších verzích numpy podporovaný
+    return node.data.item()

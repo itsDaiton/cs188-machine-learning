@@ -66,6 +66,24 @@ class RegressionModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        # Propojení vstupní vrstvy s první skrytou vrstvou
+        self.w1 = nn.Parameter(1, 200)
+        self.b1 = nn.Parameter(1, 200)
+        
+        # Propojení první skryté vrstvy s druhou skrytou vrstvou
+        self.w2 = nn.Parameter(200, 100)
+        self.b2 = nn.Parameter(1, 100)
+        
+        # Propojení druhé skryté vrstvy s výstupní vrstvou
+        self.w3 = nn.Parameter(100, 1)
+        self.b3 = nn.Parameter(1, 1)
+        
+        # Seskupení všech vah a biasů do jedné proměnné
+        self.hyperparameters = [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3]
+        
+        # Zbylé hyperparametry - velikost dávky a rychlost učení
+        self.batch_size = 100
+        self.learning_rate = 0.02
 
     def run(self, x):
         """
@@ -77,6 +95,18 @@ class RegressionModel(object):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
+        # Výpočet výstupní aktivační hodnoty pro první skrytou vrstvu pomocí aktivační funkce ReLU
+        output1 = nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1))
+        
+        # Výpočet výstupní aktivační hodnoty pro druhou skrytou vrstvu pomocí aktivační funkce ReLU
+        output2 = nn.ReLU(nn.AddBias(nn.Linear(output1, self.w2), self.b2))
+        
+        # Výpočet výstupní aktivační hodnoty pro výstupní vrstvu
+        # Zde se již funkce ReLU nepoužívá, protože chceme na výstupu i záporné hodnoty, které ReLU ořezává
+        output3 = nn.AddBias(nn.Linear(output2, self.w3), self.b3)
+        
+        # Výsledná predikce modelu
+        return output3
 
     def get_loss(self, x, y):
         """
@@ -89,12 +119,28 @@ class RegressionModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        # Výpočet ztrátové funkce - rozdíl mezi získanou hodnotou a předpokládanou hodnotou
+        return nn.SquareLoss(self.run(x), y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        # Prvotní incilializace ztrátové funkce na nekonečno, jelikož chceme v rámci trénování minimalizovat tuto hodnotu
+        loss = float('inf')
+        # Trénování modelu - dokud není ztrátová funkce menší než 0.02, tak se bude model neustále trénovat
+        while loss > 0.02:
+            # Iterace přes dávku dat z datasetu
+            for x, y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(x, y)
+                # Výpočet gradientů pro jednotlivé hyperparametry
+                gradients = nn.gradients(loss, self.hyperparameters)
+                # Převod ztrátové funkce zpět na skalární hodnotu
+                loss = nn.as_scalar(loss)
+                # Backpropagation - zpětná aktualizace vah a biasů pro celou síť
+                for i in range(len(gradients)):
+                    self.hyperparameters[i].update(gradients[i], -self.learning_rate)
 
 class DigitClassificationModel(object):
     """
