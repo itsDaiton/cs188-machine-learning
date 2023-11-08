@@ -338,8 +338,8 @@ def check_perceptron(tracker):
             assert prediction == 1 or prediction == -1, (
                 "PerceptronModel.get_prediction() should return 1 or -1, not {}".format(
                 prediction))
-            # Místo np.asscaler jsem použil np.ndarray.item() z důvodu, že np.asscalar už není ve vyšších verzích numpy podporovaný
-            expected_prediction = np.ndarray.item(np.where(np.dot(point, p.get_weights().data.T) >= 0, 1, -1))
+            # Místo np.asscaler jsem použil metodu .item() z důvodu, že np.asscalar už není ve vyšších verzích numpy podporovaný
+            expected_prediction = np.where(np.dot(point, p.get_weights().data.T) >= 0, 1, -1).item()
             assert prediction == expected_prediction, (
                 "PerceptronModel.get_prediction() returned {}; expected {}".format(
                     prediction, expected_prediction))
