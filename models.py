@@ -266,6 +266,25 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        
+        # Propojení vstupní vrstvy (47 znaků) s první skrytou vrstvou (zpracování prvního písmena slova)
+        self.w1 = nn.Parameter(self.num_chars, 256)
+        self.b1 = nn.Parameter(1, 256)
+        
+        # Kekurzivní skrytá podsíť pro zpracování dalších písmen slova (tento kód se rekurzivně volá v cyklu níže)
+        self.w2 = nn.Parameter(256, 256)
+        self.b2 = nn.Parameter(1, 256)
+        
+        # Poslední vrstva pro vytvoření predikce modelu (klasifikace do 5 jazyků)
+        self.w3 = nn.Parameter(256, len(self.languages))
+        self.b3 = nn.Parameter(1, len(self.languages))
+        
+        # Seskupení všech vah a biasů do jedné proměnné
+        self.hyperparameters = [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3]
+        
+        # Zbylé hyperparametry - velikost dávky a rychlost učení
+        self.batch_size = 100
+        self.learning_rate = 0.15
 
     def run(self, xs):
         """
@@ -297,6 +316,17 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        # Výpočet výstupní aktivační hodnoty pro první písmeno slova (stejná architekrura jako v předchozích dopředných sítích)
+        h = nn.ReLU(nn.AddBias(nn.Linear(xs[0], self.w1), self.b1))
+        
+        # Dále musíme spojit výstup předchozího kroku s dalším písmenem slova (napojení na skrytou podsíť)
+        # Výsledek je vektor prvních dvou písmen slova
+        # Tento proces poté opakujeme pro všechna písmena slova, dokud nezpracujeme celé slovo (rekuzrivní volání v cyklu)
+        # Důležité je, že výstup z předchozího kroku je vždy vstupem pro další krok (skrytý stav [h])
+        for x in xs[1:]:
+            h = nn.ReLU(nn.AddBias(nn.Add(nn.Linear(x, self.w1), nn.Linear(h, self.w2)), self.b1))
+        # Výsledná predikce modelu
+        return nn.AddBias(nn.Linear(h, self.w3), self.b3)
 
     def get_loss(self, xs, y):
         """
@@ -313,9 +343,24 @@ class LanguageIDModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        # Výpočet ztrátové funkce - opět používáme SoftmaxLoss, jelikož se jedná o vícetřídní klasifikaci
+        return nn.SoftmaxLoss(self.run(xs), y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
-        "*** YOUR CODE HERE ***"
+        "*** YOUR CODE HERE ***"  
+        # Trénování modelu - 20 epoch trénování
+        # V zadání totiž autoři píší, že jejich refereční model dosahuje přesnosti cca. 0.89 na validačních datech po 10 - 20 epochách
+        # Trénování tedy neskončí dříve jako u předchozích modelů, ale vždy až po 20 epochách
+        # Po skončení trénování se vypíše přesnost modelu na validačních datech a autograder i tak vyhodnotí úspěšnost
+        for i in range(20):
+            # Iterace přes dávku dat z datasetu
+            for x, y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(x, y)
+                # Výpočet gradientů pro jednotlivé hyperparametry
+                gradients = nn.gradients(loss, self.hyperparameters)
+                # Backpropagation - zpětná aktualizace vah a biasů pro celou síť
+                for i in range(len(gradients)):
+                    self.hyperparameters[i].update(gradients[i], -self.learning_rate)
